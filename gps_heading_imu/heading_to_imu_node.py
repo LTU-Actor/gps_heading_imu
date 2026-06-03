@@ -19,6 +19,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from ublox_ubx_msgs.msg import CarrSoln, UBXNavRelPosNED
+import rclpy.qos
 
 # CarrSoln.status == 2 (CARRIER_SOLUTION_PHASE_WITH_FIXED_AMBIGUITIES) is the only
 # state where the moving-baseline heading is trustworthy.
@@ -64,9 +65,15 @@ class HeadingToImu(Node):
 
         # Default (reliable) QoS matches the ublox driver's SystemDefaultsQoS publisher and
         # is what robot_localization expects on the IMU input.
+        self.qos_profile = rclpy.qos.QoSProfile(
+            history=rclpy.qos.QoSHistoryPolicy.KEEP_LAST,
+            reliability=rclpy.qos.QoSReliabilityPolicy.BEST_EFFORT,
+            durability=rclpy.qos.QoSDurabilityPolicy.VOLATILE,
+            depth=5,
+        )
         self.sub = self.create_subscription(
             UBXNavRelPosNED, self.input_topic, self.relpos_callback, 10)
-        self.pub = self.create_publisher(Imu, self.output_topic, 10)
+        self.pub = self.create_publisher(Imu, self.output_topic, self.qos_profile)
 
         self._was_publishing = None  # track gating state changes for clean logging
 
